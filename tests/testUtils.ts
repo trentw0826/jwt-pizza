@@ -93,6 +93,43 @@ export const mockFranchises = [
   { id: 5, name: "topSpot", stores: [] },
 ];
 
+export const mockOrders = [
+  {
+    id: 1,
+    franchiseId: 1,
+    storeId: 1,
+    date: new Date("2024-06-05T05:14:40.000Z"),
+    items: [
+      {
+        id: 1,
+        menuId: 1,
+        description: "Veggie",
+        price: 0.0038,
+      },
+      {
+        id: 2,
+        menuId: 2,
+        description: "Pepperoni",
+        price: 0.0042,
+      },
+    ],
+  },
+  {
+    id: 2,
+    franchiseId: 1,
+    storeId: 2,
+    date: new Date("2024-06-10T12:30:00.000Z"),
+    items: [
+      {
+        id: 3,
+        menuId: 1,
+        description: "Veggie",
+        price: 0.0038,
+      },
+    ],
+  },
+];
+
 // ============== Route Setup Functions ==============
 
 /**
@@ -296,18 +333,74 @@ export async function setupDeleteStoreRoute(page: Page) {
 }
 
 /**
- * Setup route to create an order
+ * Setup route to create an order (POST) or get order history (GET)
  * @param page Playwright page
+ * @param orders Optional order history for GET requests
  */
-export async function setupOrderRoute(page: Page) {
+export async function setupOrderRoute(page: Page, orders: any[] = []) {
   await page.route("*/**/api/order", async (route) => {
-    const orderReq = route.request().postDataJSON();
-    const orderRes = {
-      order: { ...orderReq, id: 23 },
-      jwt: "eyJpYXQ",
-    };
-    expect(route.request().method()).toBe("POST");
-    await route.fulfill({ json: orderRes });
+    const method = route.request().method();
+
+    if (method === "POST") {
+      const orderReq = route.request().postDataJSON();
+      const orderRes = {
+        order: { ...orderReq, id: 23, date: new Date().toISOString() },
+        jwt: "eyJpYXQiOjE3MDk3NjI0MTUsImV4cCI6MTcwOTg0ODgxNSwiaWF0IjoxNzA5NzYyNDE1LCJpc3MiOiJjczMyOSIsImFsZyI6IlJTMjU2In0.eyJ2ZW5kb3IiOnsiaWQiOiIxIiwibmFtZSI6IlBpenphIFBvY2tldCJ9LCJkaW5lciI6eyJpZCI6NCwibmFtZSI6Ik1hcmlvIiwic2VydmljZSI6ImZha2VTZXJ2aWNlIn0sIm9yZGVyIjp7Iml0ZW1zIjpbeyJtZW51SWQiOjEsImRlc2NyaXB0aW9uIjoiVmVnZ2llIiwicHJpY2UiOjAuMDA1fV0sInN0b3JlSWQiOiIxIiwiZnJhbmNoaXNlSWQiOjEsImlkIjoxfX0",
+      };
+      await route.fulfill({ json: orderRes });
+    } else if (method === "GET") {
+      await route.fulfill({
+        json: {
+          dinerId: 3,
+          orders: orders,
+          page: 1,
+        },
+      });
+    }
+  });
+}
+
+/**
+ * Setup route to verify order JWT
+ * @param page Playwright page
+ * @param isValid Whether the JWT should be valid
+ */
+export async function setupVerifyOrderRoute(
+  page: Page,
+  isValid: boolean = true,
+) {
+  await page.route("*/**/api/order/verify", async (route) => {
+    const method = route.request().method();
+    if (method !== "POST") {
+      await route.fallback();
+      return;
+    }
+
+    if (isValid) {
+      await route.fulfill({
+        json: {
+          message: "valid",
+          payload: {
+            vendor: { id: "1", name: "Pizza Pocket" },
+            diner: { id: 3, name: "Kai Chen" },
+            order: {
+              items: [{ menuId: 1, description: "Veggie", price: 0.005 }],
+              storeId: "1",
+              franchiseId: 1,
+              id: 23,
+            },
+          },
+        },
+      });
+    } else {
+      await route.fulfill({
+        status: 400,
+        json: {
+          message: "invalid",
+          payload: { error: "invalid JWT" },
+        },
+      });
+    }
   });
 }
 
