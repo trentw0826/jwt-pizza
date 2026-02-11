@@ -349,6 +349,35 @@ export async function loginAs(page: Page, user: User) {
 }
 
 /**
+ * Register a new user through the UI
+ * @param page Playwright page
+ * @param name Full name of the user
+ * @param email Email address
+ * @param password Password
+ */
+export async function registerUser(
+  page: Page,
+  name: string,
+  email: string,
+  password: string,
+) {
+  await page.getByRole("link", { name: "Register" }).click();
+  await page.getByPlaceholder("Full name").fill(name);
+  await page.getByPlaceholder("Email address").fill(email);
+  await page.getByPlaceholder("Password").fill(password);
+  await page.getByRole("button", { name: "Register" }).click();
+}
+
+/**
+ * Logout the current user through the UI
+ * @param page Playwright page
+ */
+export async function logoutUser(page: Page) {
+  // Navigate to logout page
+  await page.getByRole("link", { name: "Logout" }).click();
+}
+
+/**
  * Navigate to a specific franchise link (uses .first() to avoid footer link)
  * @param page Playwright page
  */
