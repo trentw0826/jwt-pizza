@@ -33,7 +33,7 @@ jobs:
           cp dist/index.html dist/404.html
 
       - name: Update pages artifact
-        if: github.actions == true
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist/
@@ -44,7 +44,7 @@ jobs:
           npm run test:coverage
 
       - name: Update coverage
-        if: github.actions == true
+        if: github.ref == 'refs/heads/main'
         run: |
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
           color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
@@ -52,7 +52,7 @@ jobs:
 
   deploy:
     name: Deploy
-    if: github.actions == true && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs: build
     permissions:
       pages: write
