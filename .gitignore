@@ -184,3 +184,5 @@ cookies.txt
 config.js
 **/.vite
 playwright-report
+test-results
+.vscode
