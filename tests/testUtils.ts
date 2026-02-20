@@ -304,22 +304,34 @@ export async function setupStatefulUserRoutes(
  * Setup route to get paginated list of users
  * @param page Playwright page
  * @param users Users to return (defaults to all test users)
- * @param hasMore Whether there are more users to paginate
+ * @param hasMore Whether there are more users to paginate (deprecated, use pageMap instead)
+ * @param pageMap Optional map of page numbers to users to return for that page
  */
 export async function setupUserListRoute(
   page: Page,
   users = Object.values(testUsers),
   hasMore = false,
+  pageMap?: Map<number, User[]>,
 ) {
   await page.route(/\/api\/user(\?.*)?$/, async (route) => {
     expect(route.request().method()).toBe("GET");
     const url = new URL(route.request().url());
     const name = url.searchParams.get("name") || "*";
+    const pageParam = url.searchParams.get("page");
+    const pageNum = pageParam ? parseInt(pageParam) : 1;
 
-    let filtered = users;
+    let usersToReturn = users;
+    
+    // If pageMap is provided, use it to determine what users to return for each page
+    if (pageMap && pageMap.has(pageNum)) {
+      usersToReturn = pageMap.get(pageNum) || [];
+    }
+
+    // Apply name filter
+    let filtered = usersToReturn;
     if (name !== "*") {
       const searchTerm = name.replace(/\*/g, "");
-      filtered = users.filter((u) =>
+      filtered = usersToReturn.filter((u) =>
         u.name?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
