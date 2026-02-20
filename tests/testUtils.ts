@@ -351,6 +351,27 @@ export async function setupUserListRoute(
 }
 
 /**
+ * Setup route to delete a user
+ * @param page Playwright page
+ * @param onDelete Optional callback to track deleted user IDs
+ */
+export async function setupDeleteUserRoute(
+  page: Page,
+  onDelete?: (userId: string) => void,
+) {
+  await page.route(/\/api\/user\/[^?]+$/, async (route) => {
+    if (route.request().method() === "DELETE") {
+      const url = route.request().url();
+      const userId = url.split("/").pop();
+      if (onDelete && userId) {
+        onDelete(userId);
+      }
+      await route.fulfill({ json: { message: "user deleted" } });
+    }
+  });
+}
+
+/**
  * Setup menu route
  * @param page Playwright page
  * @param menu Menu items to return (defaults to mockMenu)

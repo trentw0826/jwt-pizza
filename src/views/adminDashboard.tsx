@@ -12,7 +12,7 @@ import {
   User,
   UserList,
 } from "../service/pizzaService";
-import { TrashIcon } from "../icons";
+import { TrashIcon, CloseIcon } from "../icons";
 
 interface Props {
   user: User | null;
@@ -88,6 +88,15 @@ export default function AdminDashboard(props: Props) {
     if (result.users && result.users.length > 0) {
       setUserList(result);
       setUserPage(nextPage);
+    }
+  }
+
+  async function deleteUser(user: User) {
+    if (user.id) {
+      await pizzaService.deleteUser(user.id);
+      // Refresh the current page
+      const result = await pizzaService.getUserList(userPage, 10, "*");
+      setUserList(result);
     }
   }
 
@@ -242,7 +251,7 @@ export default function AdminDashboard(props: Props) {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="uppercase text-neutral-100 bg-slate-400 border-b-2 border-gray-500">
                       <tr>
-                        {["Name", "Email", "Role"].map((header) => (
+                        {["Name", "Email", "Role", "Action"].map((header) => (
                           <th
                             key={header}
                             scope="col"
@@ -264,6 +273,16 @@ export default function AdminDashboard(props: Props) {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                             {user.roles?.map((r) => r.role).join(", ")}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <button
+                              type="button"
+                              className="px-2 py-1 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-1 border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800"
+                              onClick={() => deleteUser(user)}
+                              aria-label={`Delete ${user.name}`}
+                            >
+                              <CloseIcon className="" />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -287,7 +306,7 @@ export default function AdminDashboard(props: Props) {
                           </button>
                         </td>
                         <td
-                          colSpan={2}
+                          colSpan={3}
                           className="text-end text-sm font-medium"
                         >
                           <button

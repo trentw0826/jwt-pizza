@@ -5,6 +5,7 @@ import {
   loginAs,
   setupUserListRoute,
   setupOrderRoute,
+  setupDeleteUserRoute,
 } from "./testUtils";
 import { Role } from "../src/service/pizzaService";
 
@@ -514,5 +515,282 @@ test.describe("Admin Dashboard - User List", () => {
     // Verify page 2 content
     await expect(usersTable).toContainText("Different User");
     await expect(usersTable).not.toContainText("Admin User");
+  });
+});
+
+test.describe("Admin Dashboard - Delete User", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupCommonRoutes(page, null);
+    await setupOrderRoute(page, []);
+    await setupUserListRoute(page);
+    await page.goto("/");
+  });
+
+  test("displays delete button for each user", async ({ page }) => {
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    // Verify Action column header is visible in users table (second table)
+    const usersTable = page.locator("table").nth(1);
+    await expect(
+      usersTable.getByRole("columnheader", { name: "Action" }),
+    ).toBeVisible();
+
+    // Verify delete buttons are present for users
+    const deleteButtons = usersTable.getByRole("button", {
+      name: /Delete .*/,
+    });
+
+    // Should have delete buttons for all users
+    const count = await deleteButtons.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test("delete button has proper aria-label", async ({ page }) => {
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    // Verify aria-label includes user name
+    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    await expect(deleteButton).toBeVisible();
+  });
+
+  test("clicking delete button removes user from list", async ({ page }) => {
+    let deletedUserId: string | null = null;
+    const usersForPage1 = Object.values(testUsers);
+    const usersAfterDelete = [testUsers.franchisee, testUsers.diner];
+
+    // Setup initial user list
+    let callCount = 0;
+    await page.route(/\/api\/user(\?.*)?$/, async (route) => {
+      callCount++;
+      const users = callCount === 1 ? usersForPage1 : usersAfterDelete;
+
+      await route.fulfill({
+        json: {
+          users: users.map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            roles: u.roles,
+          })),
+        },
+      });
+    });
+
+    await setupDeleteUserRoute(page, (userId) => {
+      deletedUserId = userId;
+    });
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    const usersTable = page.locator("table").nth(1);
+
+    // Verify user is initially present
+    await expect(usersTable).toContainText("Admin User");
+
+    // Click delete button for Admin User
+    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    await deleteButton.click();
+
+    // Wait for UI update
+    await page.waitForTimeout(200);
+
+    // Verify the correct user ID was sent to delete API
+    expect(deletedUserId).toBe("1");
+
+    // Verify user is removed from list
+    await expect(usersTable).not.toContainText("Admin User");
+    
+    // Other users should still be visible
+    await expect(usersTable).toContainText("Franchise Owner");
+    await expect(usersTable).toContainText("Kai Chen");
+  });
+
+  test("delete calls correct API endpoint with user ID", async ({ page }) => {
+    let deletedUrl: string | null = null;
+    await setupUserListRoute(page);
+    await page.route(/\/api\/user\/[^?]+$/, async (route) => {
+      if (route.request().method() === "DELETE") {
+        deletedUrl = route.request().url();
+        await route.fulfill({ json: { message: "user deleted" } });
+      }
+    });
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    const deleteButton = page.getByRole("button", { name: "Delete Kai Chen" });
+    await deleteButton.click();
+    await page.waitForTimeout(100);
+
+    // Verify correct endpoint was called
+    expect(deletedUrl).toContain("/api/user/3");
+    expect(deletedUrl).not.toContain("?");
+  });
+
+  test("deleting user refreshes current page", async ({ page }) => {
+    let getUserListCalls = 0;
+    await page.route(/\/api\/user(\?.*)?$/, async (route) => {
+      getUserListCalls++;
+      await route.fulfill({
+        json: {
+          users: Object.values(testUsers).map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            roles: u.roles,
+          })),
+        },
+      });
+    });
+
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    // Reset counter after initial load
+    getUserListCalls = 0;
+
+    // Delete a user
+    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    await deleteButton.click();
+    await page.waitForTimeout(200);
+
+    // Should have called getUserList again to refresh
+    expect(getUserListCalls).toBeGreaterThan(0);
+  });
+
+  test("delete works on different pages", async ({ page }) => {
+    const page2Users = [
+      {
+        id: "10",
+        name: "Page 2 User",
+        email: "p2user@jwt.com",
+        roles: [{ role: Role.Diner }],
+      },
+    ];
+
+    const pageMap = new Map<number, any>([
+      [1, Object.values(testUsers)],
+      [2, page2Users],
+    ]);
+    await setupUserListRoute(page, Object.values(testUsers), false, pageMap);
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    // Navigate to page 2
+    const nextButton = page.getByRole("button", { name: "next" });
+    await nextButton.click();
+    await page.waitForTimeout(200);
+
+    const usersTable = page.locator("table").nth(1);
+    await expect(usersTable).toContainText("Page 2 User");
+
+    // Delete button should be present on page 2
+    const deleteButton = page.getByRole("button", { name: "Delete Page 2 User" });
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+  });
+
+  test("multiple users can be deleted sequentially", async ({ page }) => {
+    const deletedUserIds: string[] = [];
+    
+    let callCount = 0;
+    const userSets = [
+      Object.values(testUsers), // Initial load
+      [testUsers.franchisee, testUsers.diner], // After first delete
+      [testUsers.diner], // After second delete
+    ];
+
+    await page.route(/\/api\/user(\?.*)?$/, async (route) => {
+      const users = userSets[Math.min(callCount, userSets.length - 1)];
+      callCount++;
+
+      await route.fulfill({
+        json: {
+          users: users.map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            roles: u.roles,
+          })),
+        },
+      });
+    });
+
+    await setupDeleteUserRoute(page, (userId) => {
+      deletedUserIds.push(userId);
+    });
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    const usersTable = page.locator("table").nth(1);
+
+    // Verify all users initially present
+    await expect(usersTable).toContainText("Admin User");
+    await expect(usersTable).toContainText("Franchise Owner");
+    await expect(usersTable).toContainText("Kai Chen");
+
+    // Delete first user
+    await page.getByRole("button", { name: "Delete Admin User" }).click();
+    await page.waitForTimeout(200);
+
+    // Verify first user removed
+    await expect(usersTable).not.toContainText("Admin User");
+    await expect(usersTable).toContainText("Franchise Owner");
+
+    // Delete second user
+    await page.getByRole("button", { name: "Delete Franchise Owner" }).click();
+    await page.waitForTimeout(200);
+
+    // Verify second user removed
+    await expect(usersTable).not.toContainText("Franchise Owner");
+    await expect(usersTable).toContainText("Kai Chen");
+
+    // Verify both deletions were tracked
+    expect(deletedUserIds).toContain("1");
+    expect(deletedUserIds).toContain("2");
+  });
+
+  test("delete button styling matches other action buttons", async ({ page }) => {
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    const deleteButton = page.getByRole("button", { name: /Delete .*/ }).first();
+    
+    // Verify button has consistent styling with other buttons
+    const classes = await deleteButton.getAttribute("class");
+    expect(classes).toContain("border-orange-400");
+    expect(classes).toContain("text-orange-400");
+    expect(classes).toContain("hover:border-orange-800");
+  });
+
+  test("table has 4 columns including Action column", async ({ page }) => {
+    await setupDeleteUserRoute(page);
+
+    await loginAs(page, adminUser);
+    await page.getByRole("link", { name: "Admin" }).click();
+
+    const usersTable = page.locator("table").nth(1);
+    const headers = usersTable.locator("thead th");
+    
+    // Should have 4 columns: Name, Email, Role, Action
+    await expect(headers).toHaveCount(4);
+    await expect(headers.nth(0)).toContainText("Name");
+    await expect(headers.nth(1)).toContainText("Email");
+    await expect(headers.nth(2)).toContainText("Role");
+    await expect(headers.nth(3)).toContainText("Action");
   });
 });
