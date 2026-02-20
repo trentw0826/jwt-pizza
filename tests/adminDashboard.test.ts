@@ -101,15 +101,15 @@ test.describe("Admin Dashboard - User List", () => {
     await page.getByRole("link", { name: "Admin" }).click();
 
     const nextButton = page.getByRole("button", { name: "next" });
-    
+
     // Next button should be visible and enabled (we don't know if there's more yet)
     await expect(nextButton).toBeVisible();
     await expect(nextButton).toBeEnabled();
-    
+
     // Click next - should check for more users and find none
     await nextButton.click();
     await page.waitForTimeout(100);
-    
+
     // Should still be on page 1 (no page increment since no users on page 2)
     const previousButton = page.getByRole("button", { name: "previous" });
     await expect(previousButton).toBeDisabled();
@@ -124,7 +124,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     // Setup: Page 1 has users, page 2 also has users
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
@@ -154,7 +154,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     // Setup: Page 1 and page 2 both have users
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
@@ -178,7 +178,7 @@ test.describe("Admin Dashboard - User List", () => {
     // Previous button should now be enabled
     const previousButton = page.getByRole("button", { name: "previous" });
     await expect(previousButton).toBeEnabled();
-    
+
     // Should show different users from page 2
     await expect(usersTable).toContainText("User Four");
   });
@@ -192,7 +192,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     // Setup: Page 1 and page 2 both have users
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
@@ -219,7 +219,7 @@ test.describe("Admin Dashboard - User List", () => {
 
     // Previous button should be disabled again (page 1)
     await expect(previousButton).toBeDisabled();
-    
+
     // Should show page 1 users again
     await expect(usersTable).toContainText("Admin User");
   });
@@ -288,7 +288,9 @@ test.describe("Admin Dashboard - User List", () => {
     expect(usersBox?.y).toBeGreaterThan(franchisesBox?.y || 0);
   });
 
-  test("clicking next with no more users keeps page the same", async ({ page }) => {
+  test("clicking next with no more users keeps page the same", async ({
+    page,
+  }) => {
     // Setup: Only page 1 has users, page 2 is empty
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
@@ -300,7 +302,7 @@ test.describe("Admin Dashboard - User List", () => {
     await page.getByRole("link", { name: "Admin" }).click();
 
     const usersTable = page.locator("table").nth(1);
-    
+
     // Verify we're on page 1
     await expect(usersTable).toContainText("Admin User");
 
@@ -318,7 +320,9 @@ test.describe("Admin Dashboard - User List", () => {
     await expect(usersTable).toContainText("Franchise Owner");
   });
 
-  test("navigating through multiple pages works correctly", async ({ page }) => {
+  test("navigating through multiple pages works correctly", async ({
+    page,
+  }) => {
     const page2Users = [
       {
         id: "4",
@@ -335,7 +339,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     // Setup: Three pages of users
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
@@ -387,12 +391,12 @@ test.describe("Admin Dashboard - User List", () => {
 
   test("page starts at 1, not 0", async ({ page }) => {
     let requestedPage = 0;
-    
+
     await page.route(/\/api\/user(\?.*)?$/, async (route) => {
       const url = new URL(route.request().url());
       const pageParam = url.searchParams.get("page");
       requestedPage = pageParam ? parseInt(pageParam) : 1;
-      
+
       await route.fulfill({
         json: {
           users: Object.values(testUsers).map((u) => ({
@@ -418,12 +422,14 @@ test.describe("Admin Dashboard - User List", () => {
     await page.getByRole("link", { name: "Admin" }).click();
 
     const previousButton = page.getByRole("button", { name: "previous" });
-    
+
     // Should be disabled at page 1
     await expect(previousButton).toBeDisabled();
   });
 
-  test("clicking previous from page 2 goes back to page 1", async ({ page }) => {
+  test("clicking previous from page 2 goes back to page 1", async ({
+    page,
+  }) => {
     const page2Users = [
       {
         id: "4",
@@ -432,7 +438,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
       [2, page2Users],
@@ -491,7 +497,7 @@ test.describe("Admin Dashboard - User List", () => {
         roles: [{ role: Role.Diner }],
       },
     ];
-    
+
     const pageMap = new Map<number, any>([
       [1, Object.values(testUsers)],
       [2, page2Users],
@@ -502,7 +508,7 @@ test.describe("Admin Dashboard - User List", () => {
     await page.getByRole("link", { name: "Admin" }).click();
 
     const usersTable = page.locator("table").nth(1);
-    
+
     // Verify page 1 content
     await expect(usersTable).toContainText("Admin User");
     await expect(usersTable).not.toContainText("Different User");
@@ -555,7 +561,9 @@ test.describe("Admin Dashboard - Delete User", () => {
     await page.getByRole("link", { name: "Admin" }).click();
 
     // Verify aria-label includes user name
-    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    const deleteButton = page.getByRole("button", {
+      name: "Delete Admin User",
+    });
     await expect(deleteButton).toBeVisible();
   });
 
@@ -595,7 +603,9 @@ test.describe("Admin Dashboard - Delete User", () => {
     await expect(usersTable).toContainText("Admin User");
 
     // Click delete button for Admin User
-    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    const deleteButton = page.getByRole("button", {
+      name: "Delete Admin User",
+    });
     await deleteButton.click();
 
     // Wait for UI update
@@ -606,7 +616,7 @@ test.describe("Admin Dashboard - Delete User", () => {
 
     // Verify user is removed from list
     await expect(usersTable).not.toContainText("Admin User");
-    
+
     // Other users should still be visible
     await expect(usersTable).toContainText("Franchise Owner");
     await expect(usersTable).toContainText("Kai Chen");
@@ -659,7 +669,9 @@ test.describe("Admin Dashboard - Delete User", () => {
     getUserListCalls = 0;
 
     // Delete a user
-    const deleteButton = page.getByRole("button", { name: "Delete Admin User" });
+    const deleteButton = page.getByRole("button", {
+      name: "Delete Admin User",
+    });
     await deleteButton.click();
     await page.waitForTimeout(200);
 
@@ -696,14 +708,16 @@ test.describe("Admin Dashboard - Delete User", () => {
     await expect(usersTable).toContainText("Page 2 User");
 
     // Delete button should be present on page 2
-    const deleteButton = page.getByRole("button", { name: "Delete Page 2 User" });
+    const deleteButton = page.getByRole("button", {
+      name: "Delete Page 2 User",
+    });
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
   });
 
   test("multiple users can be deleted sequentially", async ({ page }) => {
     const deletedUserIds: string[] = [];
-    
+
     let callCount = 0;
     const userSets = [
       Object.values(testUsers), // Initial load
@@ -762,14 +776,18 @@ test.describe("Admin Dashboard - Delete User", () => {
     expect(deletedUserIds).toContain("2");
   });
 
-  test("delete button styling matches other action buttons", async ({ page }) => {
+  test("delete button styling matches other action buttons", async ({
+    page,
+  }) => {
     await setupDeleteUserRoute(page);
 
     await loginAs(page, adminUser);
     await page.getByRole("link", { name: "Admin" }).click();
 
-    const deleteButton = page.getByRole("button", { name: /Delete .*/ }).first();
-    
+    const deleteButton = page
+      .getByRole("button", { name: /Delete .*/ })
+      .first();
+
     // Verify button has consistent styling with other buttons
     const classes = await deleteButton.getAttribute("class");
     expect(classes).toContain("border-orange-400");
@@ -785,7 +803,7 @@ test.describe("Admin Dashboard - Delete User", () => {
 
     const usersTable = page.locator("table").nth(1);
     const headers = usersTable.locator("thead th");
-    
+
     // Should have 4 columns: Name, Email, Role, Action
     await expect(headers).toHaveCount(4);
     await expect(headers.nth(0)).toContainText("Name");
