@@ -203,6 +203,104 @@ export async function setupUserMeRoute(
 }
 
 /**
+ * Setup route to update user information with stateful persistence
+ * This modifies the user object in-place so subsequent /api/user/me calls return updated data
+ * @param page Playwright page
+ * @param currentUser Reference to the current user object that will be updated
+ * @param shouldFail Whether the update should fail
+ */
+export async function setupUpdateUserRoute(
+  page: Page,
+  shouldFail: boolean = false,
+  currentUser?: { value: User | null } = undefined,
+) {
+  await page.route("*/**/api/user/*", async (route) => {
+    if (route.request().method() === "PUT") {
+      if (shouldFail) {
+        await route.fulfill({
+          status: 400,
+          json: { message: "Failed to update user" },
+        });
+        return;
+      }
+
+      const updateReq = route.request().postDataJSON();
+      const updatedUser = {
+        id: updateReq.id,
+        name: updateReq.name,
+        email: updateReq.email,
+        roles: updateReq.roles,
+      };
+
+      // Update the shared user reference if provided
+      if (currentUser) {
+        currentUser.value = updatedUser;
+      }
+
+      await route.fulfill({
+        json: {
+          user: updatedUser,
+          token: "test-token-updated-" + updatedUser.id,
+        },
+      });
+    }
+  });
+}
+
+/**
+ * Setup stateful user routes that persist updates across navigation
+ * Use this instead of setupUserMeRoute + setupUpdateUserRoute when testing persistence
+ * @param page Playwright page
+ * @param initialUser Initial logged in user
+ * @param shouldUpdateFail Whether updates should fail
+ */
+export async function setupStatefulUserRoutes(
+  page: Page,
+  initialUser: User | null = null,
+  shouldUpdateFail: boolean = false,
+) {
+  // Use a shared reference object to track current user state
+  const currentUser = { value: initialUser };
+
+  // Setup /api/user/me to return current user
+  await page.route("*/**/api/user/me", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({ json: currentUser.value });
+  });
+
+  // Setup /api/user/:id PUT to update user
+  await page.route("*/**/api/user/*", async (route) => {
+    if (route.request().method() === "PUT") {
+      if (shouldUpdateFail) {
+        await route.fulfill({
+          status: 400,
+          json: { message: "Failed to update user" },
+        });
+        return;
+      }
+
+      const updateReq = route.request().postDataJSON();
+      const updatedUser = {
+        id: updateReq.id,
+        name: updateReq.name,
+        email: updateReq.email,
+        roles: updateReq.roles,
+      };
+
+      // Update the shared state
+      currentUser.value = updatedUser;
+
+      await route.fulfill({
+        json: {
+          user: updatedUser,
+          token: "test-token-updated-" + updatedUser.id,
+        },
+      });
+    }
+  });
+}
+
+/**
  * Setup menu route
  * @param page Playwright page
  * @param menu Menu items to return (defaults to mockMenu)

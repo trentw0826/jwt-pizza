@@ -26,11 +26,12 @@ test.describe("Diner Dashboard", () => {
     await expect(page.locator("h2")).toContainText("Your pizza kitchen");
 
     // Verify user information is displayed
-    await expect(page.getByText("name:")).toBeVisible();
+
+    await expect(page.getByText("name:").first()).toBeVisible();
     await expect(page.getByText(dinerUser.name!)).toBeVisible();
-    await expect(page.getByText("email:")).toBeVisible();
+    await expect(page.getByText("email:").first()).toBeVisible();
     await expect(page.getByText(dinerUser.email!)).toBeVisible();
-    await expect(page.getByText("role:")).toBeVisible();
+    await expect(page.getByText("role:").first()).toBeVisible();
     // Check for diner role in the role section (not breadcrumb)
     await expect(page.locator(".text-orange-200")).toContainText("diner");
   });

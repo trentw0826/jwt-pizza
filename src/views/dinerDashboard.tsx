@@ -9,11 +9,16 @@ import Button from "../components/button";
 
 interface Props {
   user: User | null;
+  setUser: (user: User | null) => void;
 }
 
 export default function DinerDashboard(props: Props) {
   const user = props.user || ({} as User);
   const [orders, setOrders] = React.useState<Order[]>([]);
+  const nameRef = React.useRef<HTMLInputElement>(null);
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
+  const [updating, setUpdating] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
@@ -33,9 +38,33 @@ export default function DinerDashboard(props: Props) {
   }
 
   async function updateUser() {
-    setTimeout(() => {
+    const updatedUser: User = {
+      id: user.id,
+      name: nameRef.current?.value,
+      email: emailRef.current?.value,
+      password: passwordRef.current?.value || undefined,
+      roles: user.roles,
+    };
+
+    try {
+      setUpdating(true);
+      const returnedUser = await pizzaService.updateUser(updatedUser);
+      // use the server-returned user (may include updated roles/id)
+      if (typeof props.setUser === "function") {
+        props.setUser(returnedUser);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error("props.setUser is not a function", props.setUser);
+      }
       HSOverlay.close(document.getElementById("hs-jwt-modal")!);
-    }, 100);
+    } catch (e: any) {
+      // minimal error handling — could be expanded to show UI feedback
+      // eslint-disable-next-line no-console
+      console.error("Failed to update user", e);
+      alert(e?.message || "Failed to update user");
+    } finally {
+      setUpdating(false);
+    }
   }
 
   return (
@@ -130,7 +159,10 @@ export default function DinerDashboard(props: Props) {
                                 ₿
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-start text-xs sm:text-sm text-gray-800">
-                                {order.date.toLocaleString()}
+                                {(typeof order.date === "string"
+                                  ? new Date(order.date)
+                                  : order.date
+                                ).toLocaleString()}
                               </td>
                             </tr>
                           ))}
@@ -165,7 +197,28 @@ export default function DinerDashboard(props: Props) {
             </div>
             <div className="p-4 overflow-y-scroll max-h-52">
               <div className="my-4 text-lg text-start grid grid-cols-5 gap-2 items-center">
-                update fields here
+                <div className="font-semibold">name:</div>
+                <input
+                  type="text"
+                  className="col-span-4 border border-gray-300 rounded-md p-1"
+                  defaultValue={user.name}
+                  ref={nameRef}
+                />
+                <div className="font-semibold">email:</div>
+                <input
+                  type="email"
+                  className="col-span-4 border border-gray-300 rounded-md p-1"
+                  defaultValue={user.email}
+                  ref={emailRef}
+                />
+                <div className="font-semibold">password:</div>
+                <input
+                  id="password"
+                  type="text"
+                  className="col-span-4 border border-gray-300 rounded-md p-1"
+                  defaultValue=""
+                  ref={passwordRef}
+                />
               </div>
             </div>
             <div className="flex justify-end items-center gap-x-2 py-3 px-4 border-t  bg-slate-200 rounded-b-xl">
@@ -173,8 +226,9 @@ export default function DinerDashboard(props: Props) {
                 type="button"
                 className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
                 onClick={updateUser}
+                disabled={updating}
               >
-                Update
+                {updating ? "Updating…" : "Update"}
               </button>
             </div>
           </div>
