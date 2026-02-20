@@ -301,6 +301,44 @@ export async function setupStatefulUserRoutes(
 }
 
 /**
+ * Setup route to get paginated list of users
+ * @param page Playwright page
+ * @param users Users to return (defaults to all test users)
+ * @param hasMore Whether there are more users to paginate
+ */
+export async function setupUserListRoute(
+  page: Page,
+  users = Object.values(testUsers),
+  hasMore = false,
+) {
+  await page.route(/\/api\/user(\?.*)?$/, async (route) => {
+    expect(route.request().method()).toBe("GET");
+    const url = new URL(route.request().url());
+    const name = url.searchParams.get("name") || "*";
+
+    let filtered = users;
+    if (name !== "*") {
+      const searchTerm = name.replace(/\*/g, "");
+      filtered = users.filter((u) =>
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    }
+
+    await route.fulfill({
+      json: {
+        users: filtered.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          roles: u.roles,
+        })),
+        more: hasMore,
+      },
+    });
+  });
+}
+
+/**
  * Setup menu route
  * @param page Playwright page
  * @param menu Menu items to return (defaults to mockMenu)

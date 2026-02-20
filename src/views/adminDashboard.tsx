@@ -10,6 +10,7 @@ import {
   Role,
   Store,
   User,
+  UserList,
 } from "../service/pizzaService";
 import { TrashIcon } from "../icons";
 
@@ -23,14 +24,27 @@ export default function AdminDashboard(props: Props) {
     franchises: [],
     more: false,
   });
-  const [franchisePage, setFranchisePage] = React.useState(0);
+  const [franchisePage, setFranchisePage] = React.useState(1);
   const filterFranchiseRef = React.useRef<HTMLInputElement>(null);
+
+  const [userList, setUserList] = React.useState<UserList>({
+    users: [],
+    more: false,
+  });
+  const [userPage, setUserPage] = React.useState(1);
+  const filterUserRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     (async () => {
       setFranchiseList(await pizzaService.getFranchises(franchisePage, 3, "*"));
     })();
   }, [props.user, franchisePage]);
+
+  React.useEffect(() => {
+    (async () => {
+      setUserList(await pizzaService.getUserList(userPage, 10, "*"));
+    })();
+  }, [props.user, userPage]);
 
   function createFranchise() {
     navigate("/admin-dashboard/create-franchise");
@@ -56,6 +70,25 @@ export default function AdminDashboard(props: Props) {
         `*${filterFranchiseRef.current?.value}*`,
       ),
     );
+  }
+
+  async function filterUsers() {
+    setUserList(
+      await pizzaService.getUserList(
+        userPage,
+        10,
+        `*${filterUserRef.current?.value}*`,
+      ),
+    );
+  }
+
+  async function nextUserPage() {
+    const nextPage = userPage + 1;
+    const result = await pizzaService.getUserList(nextPage, 10, "*");
+    if (result.users && result.users.length > 0) {
+      setUserList(result);
+      setUserPage(nextPage);
+    }
   }
 
   let response = <NotFound />;
@@ -176,7 +209,7 @@ export default function AdminDashboard(props: Props) {
                               onClick={() =>
                                 setFranchisePage(franchisePage - 1)
                               }
-                              disabled={franchisePage <= 0}
+                              disabled={franchisePage <= 1}
                             >
                               «
                             </button>
@@ -199,6 +232,87 @@ export default function AdminDashboard(props: Props) {
             </div>
           </div>
         </div>
+
+        <h3 className="text-neutral-100 text-xl mt-8">Users</h3>
+        <div className="bg-neutral-100 overflow-clip my-4">
+          <div className="flex flex-col">
+            <div className="-m-1.5 overflow-x-auto">
+              <div className="p-1.5 min-w-full inline-block align-middle">
+                <div className="overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="uppercase text-neutral-100 bg-slate-400 border-b-2 border-gray-500">
+                      <tr>
+                        {["Name", "Email", "Role"].map((header) => (
+                          <th
+                            key={header}
+                            scope="col"
+                            className="px-6 py-3 text-center text-xs font-medium"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {userList.users.map((user, index) => (
+                        <tr key={index} className="hover:bg-gray-100">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
+                            {user.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {user.roles?.map((r) => r.role).join(", ")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td className="px-1 py-1">
+                          <input
+                            type="text"
+                            ref={filterUserRef}
+                            name="filterUser"
+                            placeholder="name"
+                            className="px-2 py-1 text-sm border border-gray-300 rounded-lg"
+                          />
+                          <button
+                            type="submit"
+                            className="ml-2 px-2 py-1 text-sm font-semibold rounded-lg border border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800"
+                            onClick={filterUsers}
+                          >
+                            Submit
+                          </button>
+                        </td>
+                        <td
+                          colSpan={2}
+                          className="text-end text-sm font-medium"
+                        >
+                          <button
+                            className="w-16 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300"
+                            onClick={() => setUserPage(userPage - 1)}
+                            disabled={userPage <= 1}
+                          >
+                            previous
+                          </button>
+                          <button
+                            className="w-16 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300"
+                            onClick={nextUserPage}
+                          >
+                            next
+                          </button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <Button
             className="w-36 text-xs sm:text-sm sm:w-64"
