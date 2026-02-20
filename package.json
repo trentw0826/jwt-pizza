@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "format": "prettier --write .",
     "test": "playwright test",
     "test:coverage": "nyc --reporter=json-summary --reporter=text playwright test"
   },
@@ -29,6 +30,7 @@
   },
   "dependencies": {
     "preline": "^2.1.0",
+    "prettier": "^3.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3"
