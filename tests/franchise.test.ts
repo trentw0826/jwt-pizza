@@ -35,24 +35,26 @@ test.describe("Admin Dashboard", () => {
     await expect(page.locator("h2")).toContainText("Mama Ricci's kitchen");
 
     // Verify franchises table
-    await expect(page.getByRole("heading", { level: 3 })).toContainText(
-      "Franchises",
-    );
+    await expect(
+      page.getByRole("heading", { name: "Franchises" }),
+    ).toContainText("Franchises");
 
     // Verify franchise data is displayed
-    await expect(page.locator("table")).toContainText("PizzaLand");
-    await expect(page.locator("table")).toContainText("SliceMaster");
-    await expect(page.locator("table")).toContainText("Franchise Owner");
+    await expect(page.locator("table").first()).toContainText("PizzaLand");
+    await expect(page.locator("table").first()).toContainText("SliceMaster");
+    await expect(page.locator("table").first()).toContainText(
+      "Franchise Owner",
+    );
 
     // Verify stores are displayed
-    await expect(page.locator("table")).toContainText("Provo");
-    await expect(page.locator("table")).toContainText("Orem");
-    await expect(page.locator("table")).toContainText("Salt Lake");
+    await expect(page.locator("table").first()).toContainText("Provo");
+    await expect(page.locator("table").first()).toContainText("Orem");
+    await expect(page.locator("table").first()).toContainText("Salt Lake");
 
     // Verify revenue is displayed
-    await expect(page.locator("table")).toContainText("1,250.5 ₿");
-    await expect(page.locator("table")).toContainText("987.25 ₿");
-    await expect(page.locator("table")).toContainText("2,100.75 ₿");
+    await expect(page.locator("table").first()).toContainText("1,250.5 ₿");
+    await expect(page.locator("table").first()).toContainText("987.25 ₿");
+    await expect(page.locator("table").first()).toContainText("2,100.75 ₿");
   });
 
   test("can filter franchises", async ({ page }) => {
@@ -61,7 +63,7 @@ test.describe("Admin Dashboard", () => {
     await page.getByRole("button", { name: "Submit" }).nth(0).click();
 
     // Should still show filtered results
-    await expect(page.locator("table")).toContainText("PizzaLand");
+    await expect(page.locator("table").first()).toContainText("PizzaLand");
   });
 
   test("can paginate franchise list", async ({ page }) => {
